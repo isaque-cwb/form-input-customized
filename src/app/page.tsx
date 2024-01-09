@@ -66,6 +66,7 @@ export default function Home() {
                 customInput={Input}
                 label="CPF"
                 placeholder="999.999.999-99"
+                error={errors.cpf?.message}
               />
             )}
           />
@@ -80,6 +81,7 @@ export default function Home() {
                 customInput={Input}
                 label="Fone"
                 placeholder="(99) 99999-9999"
+                error={errors.tel?.message}
               />
             )}
           />
