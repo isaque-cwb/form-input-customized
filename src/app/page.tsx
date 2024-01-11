@@ -1,15 +1,38 @@
 'use client'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
-import { DataProps, Input, schema } from '@/components/input'
-import { PatternFormat } from 'react-number-format'
+import { ChangeEvent, useState } from 'react'
+import { Input } from '@/components/input'
+import { z } from 'zod'
+import { InputCustomMask } from '@/components/input-mask'
+
+export const schema = z
+  .object({
+    name: z.string().min(3, 'Campo "Nome" é obrigatório'),
+    password: z.string().min(6, 'informe um senha com 6 dígitos no mínimo'),
+    confirmPass: z.string().min(6, 'informe um senha com 6 dígitos no mínimo'),
+    cpf: z.coerce.string(), // .min(5, 'CPF deve conter 11 dígitos'),
+    tel: z.coerce.string(),
+    cep: z.coerce.string(),
+    //   .min(11, 'digite o número de telefone completo com DDD'),
+  })
+  .refine((data) => data.password === data.confirmPass, {
+    path: ['confirmPass'],
+    message: 'As senhas precisam ser iguais',
+  })
+
+export type DataProps = z.infer<typeof schema>
 
 export default function Home() {
   const [data, setData] = useState({} as DataProps)
+  const [cpf, setCpf] = useState('')
+  const [tel, setTel] = useState('')
+  const [cep, setCep] = useState('')
+  const [isValid, setIsValid] = useState(false)
+  const [isValidTel, setIsValidTel] = useState(false)
+  const [isValidCep, setIsValidCep] = useState(false)
 
   const {
-    control,
     register,
     handleSubmit,
     formState: { errors },
@@ -18,27 +41,64 @@ export default function Home() {
     resolver: zodResolver(schema),
   })
 
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const cleanedCpf = e.target.value // .replace(/[^0-9]/g, '') // Remove pontos e traço
+    setCpf(cleanedCpf)
+
+    if (cleanedCpf.length === 14) {
+      setIsValid(true)
+    } else {
+      setIsValid(false)
+    }
+  }
+  const handleChangeTel = (e: ChangeEvent<HTMLInputElement>) => {
+    const cleanedTel = e.target.value // .replace(/[^0-9]/g, '') // Remove pontos e traço
+    setTel(cleanedTel)
+
+    if (cleanedTel.length === 15) {
+      setIsValidTel(true)
+    } else {
+      setIsValidTel(false)
+    }
+  }
+  const handleChangeCep = (e: ChangeEvent<HTMLInputElement>) => {
+    const cleanedCep = e.target.value // .replace(/[^0-9]/g, '') // Remove pontos e traço
+    setCep(cleanedCep)
+
+    if (cleanedCep.length === 10) {
+      setIsValidCep(true)
+    } else {
+      setIsValidCep(false)
+    }
+  }
+
   const handleSubmitData = (data: DataProps) => {
-    setData(data)
+    if (isValid && isValidTel && isValidCep) {
+      setData({
+        ...data,
+        cpf,
+        tel,
+        cep,
+      })
+    }
   }
 
   return (
     <div className="flex h-screen  items-center  justify-center bg-gray-200">
-      <div className="h-auto w-[90%] rounded-lg border-2 border-slate-300 bg-white p-4 shadow-xl lg:w-[700px]">
+      <div className="h-auto w-[90%] rounded-lg  bg-white p-4 shadow-[0_3px_10px_rgb(0,0,0,0.2)] lg:w-[700px]">
         <form
           onSubmit={handleSubmit(handleSubmitData)}
-          className="mx-4 flex flex-col gap-2 "
+          className="mx-4 flex flex-col gap-2"
         >
-          <h1 className="text-2xl font-bold">Input</h1>
-
+          <h1 className="text-2xl font-bold">Form - com Input Customizados</h1>
           <Input
             {...register('name')}
             label="Nome"
             type="text"
             error={errors.name?.message}
             placeholder="Digite seu nome"
+            state={errors.name?.message ? 'error' : 'success'}
           />
-
           <Input
             {...register('password')}
             label="Senha"
@@ -46,6 +106,7 @@ export default function Home() {
             error={errors.password?.message}
             placeholder="Digite sua Senha"
             className="w-[100%] rounded-md border-2 p-2 outline-none"
+            state={errors.password?.message ? 'error' : 'success'}
           />
           <Input
             {...register('confirmPass')}
@@ -54,36 +115,43 @@ export default function Home() {
             error={errors.confirmPass?.message}
             placeholder="Confirme sua Senha"
             className="w-[100%] rounded-md border-2 p-2 outline-none"
+            state={errors.confirmPass?.message ? 'error' : 'success'}
           />
-
-          <Controller
+          <InputCustomMask
             name="cpf"
-            control={control}
-            render={({ field }) => (
-              <PatternFormat
-                format={'###.###.###-##'}
-                {...field}
-                customInput={Input}
-                label="CPF"
-                placeholder="999.999.999-99"
-                error={errors.cpf?.message}
-              />
-            )}
+            mask="999.999.999-99"
+            label="CPF"
+            error={cpf ? (isValid ? '' : 'CPF deve conter 11 dígitos') : ''}
+            state={cpf ? (isValid ? 'success' : 'error') : 'none'}
+            value={cpf}
+            placeholder="999.999.999-99"
+            onChange={handleChange}
           />
-
-          <Controller
+          <InputCustomMask
             name="tel"
-            control={control}
-            render={({ field }) => (
-              <PatternFormat
-                format={'(##) #####-####'}
-                {...field}
-                customInput={Input}
-                label="Fone"
-                placeholder="(99) 99999-9999"
-                error={errors.tel?.message}
-              />
-            )}
+            mask="(99) 99999-9999"
+            label="Telefone"
+            placeholder="(99) 99999-9999"
+            error={
+              tel
+                ? isValidTel
+                  ? ''
+                  : 'número do telefone deve conter DDD'
+                : ''
+            }
+            state={tel ? (isValidTel ? 'success' : 'error') : 'none'}
+            value={tel}
+            onChange={handleChangeTel}
+          />
+          <InputCustomMask
+            name="cep"
+            mask="99.999-999"
+            label="CEP"
+            error={cep ? (isValidCep ? '' : 'cep deve conter 8 dígitos') : ''}
+            state={cep ? (isValidCep ? 'success' : 'error') : 'none'}
+            value={cep}
+            placeholder="99.999-999"
+            onChange={handleChangeCep}
           />
 
           <button
@@ -92,13 +160,14 @@ export default function Home() {
           >
             Salvar
           </button>
+          {data.name ? (
+            <pre className="flex items-center justify-center ">
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          ) : (
+            <p></p>
+          )}
         </form>
-        <div className="flex items-center justify-center gap-2">
-          <p>{data.name}</p>
-          <p>{data.password}</p>
-          <p>{data.cpf}</p>
-          <p>{data.tel}</p>
-        </div>
       </div>
     </div>
   )
